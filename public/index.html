@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student CRUD</title>
+</head>
+<body>
+    <h1>Student CRUD App</h1>
+    <form id="studentForm">
+        <input id="name" placeholder="Student Name" required>
+        <input id="roll" placeholder="Roll Number" required>
+        <input id="department" placeholder="Department" required>
+        <button type="submit">Save Student</button>
+    </form>
+    <p id="message"></p>
+    <h2>Student List</h2>
+    <button id="viewBtn">View Students</button>
+    <table border="1" cellpadding="5">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Roll Number</th>
+                <th>Department</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentList"></tbody>
+    </table>
+    <script type="module">
+        import { initializeApp }
+            from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+            getFirestore, collection, addDoc, getDocs,
+            updateDoc, deleteDoc, doc
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        const firebaseConfig = {
+              apiKey: "AIzaSyA_YE340MEkHMNGiYtvOld3Ed0np0KMEZQ",
+                authDomain: "student-997bb.firebaseapp.com",
+                projectId: "student-997bb",
+                storageBucket: "student-997bb.firebasestorage.app",
+                messagingSenderId: "602702830235",
+                appId: "1:602702830235:web:47ceb59097188ee7ed043e",
+                measurementId: "G-XXSW878MT2"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const students = collection(db, "students");
+        const form = document.getElementById("studentForm");
+        const list = document.getElementById("studentList");
+        const message = document.getElementById("message");
+        let editId = null;
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const student = {
+                name: document.getElementById("name").value,
+                roll: document.getElementById("roll").value,
+                department: document.getElementById("department").value
+            };
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, "students", editId), student);
+                    message.textContent = "Student updated!";
+                    editId = null;
+                } else {
+                    await addDoc(students, student);
+                    message.textContent = "Student added!";
+                }
+                form.reset();
+                await viewStudents();
+            } catch (error) {
+                message.textContent = "Error: " + error.message;
+            }
+        });
+        async function viewStudents() {
+            try {
+                list.replaceChildren();
+                const snapshot = await getDocs(students);
+                snapshot.forEach((studentDoc) => {
+                    const s = studentDoc.data();
+                    const tr = document.createElement("tr");
+                    [s.name, s.roll, s.department].forEach(value => {
+                        const td = document.createElement("td");
+                        td.textContent = value ?? "";
+                        tr.appendChild(td);
+                    });
+                    const actions = document.createElement("td");
+                    const edit = document.createElement("button");
+                    edit.textContent = "Edit";
+                    edit.onclick = () => {
+                        document.getElementById("name").value = s.name;
+                        document.getElementById("roll").value = s.roll;
+                        document.getElementById("department").value = s.department;
+                        editId = studentDoc.id;
+                    };
+                    const del = document.createElement("button");
+                    del.textContent = "Delete";
+                    del.onclick = async () => {
+                        if (confirm("Delete this student?")) {
+                            await deleteDoc(doc(db, "students", studentDoc.id));
+                            message.textContent = "Student deleted!";
+                            await viewStudents();
+                        }
+                    };
+                    actions.append(edit, del);
+                    tr.appendChild(actions);
+                    list.appendChild(tr);
+                });
+            } catch (error) {
+                message.textContent = "Error: " + error.message;
+            }
+        }
+        document.getElementById("viewBtn").addEventListener("click", viewStudents);
+        viewStudents();
+    </script>
+</body>
+</html>
